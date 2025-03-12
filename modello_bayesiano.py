@@ -56,7 +56,6 @@ def run_analysis(csv_path):
     model = build_model(X, y)
     
     with model:
-        # Configurazione avanzata per NUTS
         trace = pm.sample(
             draws=50,
             tune=100,
@@ -67,29 +66,55 @@ def run_analysis(csv_path):
             idata_kwargs={'log_likelihood': True}
         )
         
-        # Campionamento predittivo protetto
-        try:
-            ppc = pm.sample_posterior_predictive(
-                trace,
-                var_names=['obs'],
-                random_seed=42
-            )
-        except RuntimeError as e:
-            raise RuntimeError("Errore nel campionamento predittivo") from e
+        ppc = pm.sample_posterior_predictive(
+            trace,
+            var_names=['obs'],
+            random_seed=42
+        )
     
     # Analisi diagnostiche
     az.plot_trace(trace, compact=True)
     plt.tight_layout()
     plt.show()
     
-    # Visualizzazione risultati
+    # Visualizzazione avanzata
     y_pred = ppc.posterior_predictive['obs'].mean(axis=(0,1)).values
-    plt.figure(figsize=(10, 6))
-    plt.scatter(y, y_pred, alpha=0.6)
-    plt.plot([0, y.max()], [0, y.max()], 'r--')
-    plt.xlabel('Osservato')
-    plt.ylabel('Predetto')
-    plt.title('Confronto Previsioni vs Realtà')
+    indices = np.arange(len(y))
+    
+    plt.figure(figsize=(14, 8))
+    
+    # Subplot 1: Confronto diretto
+    plt.subplot(2, 1, 1)
+    plt.scatter(indices, y, label='Valori Reali', color='blue', 
+                alpha=0.7, s=100, marker='o', edgecolor='black')
+    plt.scatter(indices, y_pred, label='Previsioni', color='red', 
+                alpha=0.7, s=100, marker='X', linewidths=1.5)
+    
+    # Linee di connessione per evidenziare le differenze
+    for i, (true, pred) in enumerate(zip(y, y_pred)):
+        plt.plot([i, i], [true, pred], 'grey', alpha=0.3, linestyle='--')
+    
+    plt.title('Confronto Dettagliato: Valori Reali vs Previsioni', fontsize=14)
+    plt.xlabel('Indice Partita', fontsize=12)
+    plt.ylabel('Numero di Goal', fontsize=12)
+    plt.xticks(indices, rotation=45)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.3)
+    
+    # Subplot 2: Residui
+    plt.subplot(2, 1, 2)
+    residuals = y_pred - y
+    colors = ['red' if res >= 0 else 'blue' for res in residuals]
+    plt.bar(indices, residuals, color=colors, alpha=0.6, edgecolor='black')
+    
+    plt.title('Analisi dei Residui (Previsioni - Valori Reali)', fontsize=14)
+    plt.xlabel('Indice Partita', fontsize=12)
+    plt.ylabel('Errore di Previsione', fontsize=12)
+    plt.xticks(indices, rotation=45)
+    plt.axhline(0, color='black', linestyle='--')
+    plt.grid(True, linestyle='--', alpha=0.3)
+    
+    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
