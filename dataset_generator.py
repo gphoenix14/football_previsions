@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-num_samples = 50
+num_samples = 100
 np.random.seed(42)
 
 # Genera identificatori unici per ciascun match
